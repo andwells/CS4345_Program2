@@ -16,7 +16,7 @@ public class Server implements Subject
 		messages = new LinkedBlockingDeque<String>();
 	}
 
-	public boolean start()
+	public boolean bind()
 	{
 		boolean bindingSuccessful = true;
 		try
@@ -33,7 +33,7 @@ public class Server implements Subject
 	
 	
 	@Override
-	public void registerObserver(Observer o)
+	public void registerObserver(Observer o)//Does this work? Or de we need an index?
 	{
 		synchronized(observers)
 		{
@@ -41,8 +41,9 @@ public class Server implements Subject
 			{
 				return;//Client is already in list
 			}
-			
+			notifyObservers(String.format("%s has joined the conversation.\n", o.getName()));
 			observers.add(o);
+			
 		}
 		
 	}
@@ -52,9 +53,15 @@ public class Server implements Subject
 	{
 		synchronized(observers)
 		{
-			if(!observers.contains(o))
+			if(!observers.contains(o))//Does this work? Or de we need an index?
 			{
 				return;//Client isn't registered, so we can't do anything
+			}
+			else
+			{
+				observers.remove(o);
+				
+				notifyObservers(String.format("%s has disconnected.\n", o.getName()));
 			}
 		}
 	}
@@ -62,8 +69,25 @@ public class Server implements Subject
 	@Override
 	public void notifyObservers(Object o)
 	{
-		// TODO Auto-generated method stub
+		synchronized(observers)
+		{
+			for(Observer obs : observers)
+			{
+				obs.update(o);
+			}
+		}
 		
 	}
+	
+	
+	private class ConnectionHandler implements Runnable
+	{
 
+		@Override
+		public void run() {
+			// TODO Auto-generated method stub
+			
+		}
+		
+	}
 }
