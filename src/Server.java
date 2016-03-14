@@ -7,8 +7,9 @@ public class Server implements Subject
 {
 	private List<Observer> observers;
 	private LinkedBlockingDeque<String> messages;
-	private int maxConnections = 20;
+	private final int MAX_CONNECTIONS = 20;
 	private ServerSocket serverSocket;
+	private boolean acceptConnections = false;
 	
 	public Server()
 	{
@@ -22,6 +23,8 @@ public class Server implements Subject
 		try
 		{
 			serverSocket = new ServerSocket(10000);
+			acceptConnections = true;
+			System.out.println("Server socket bound to port " + 10000);
 		}
 		catch(IOException ioEx)
 		{
@@ -31,6 +34,15 @@ public class Server implements Subject
 		return bindingSuccessful;
 	}
 	
+	public void start()
+	{
+		new Thread(new ConnectionHandler()).start();
+	}
+	
+	public void shutdown()
+	{
+		this.acceptConnections = false;
+	}
 	
 	@Override
 	public void registerObserver(Observer o)//Does this work? Or de we need an index?
@@ -53,7 +65,8 @@ public class Server implements Subject
 	{
 		synchronized(observers)
 		{
-			if(!observers.contains(o))//Does this work? Or de we need an index?
+			
+			if(!observers.contains(o))//Does this work? Or do we need an index?
 			{
 				return;//Client isn't registered, so we can't do anything
 			}
@@ -84,9 +97,28 @@ public class Server implements Subject
 	{
 
 		@Override
-		public void run() {
-			// TODO Auto-generated method stub
-			
+		public void run()
+		{
+			System.out.println("Starting connection listener");
+			while(acceptConnections)
+			{
+				try
+				{
+					if(observers.size() < MAX_CONNECTIONS)
+					{
+						
+						Socket connection = serverSocket.accept();
+						
+						//put connection into an observer
+						//Should we start an observer thread?
+					}
+				}
+				catch (IOException e)
+				{
+					e.printStackTrace();
+				}
+			}
+			System.out.println("Shutting down connection thread.");
 		}
 		
 	}
