@@ -1,20 +1,23 @@
 import java.io.*;
 import java.net.*;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.*;
+import java.util.concurrent.*;
+
 
 public class Server implements Subject
 {
-	private List<Observer> observers;
+	private Map<String, Observer> observers;
 	private LinkedBlockingDeque<String> messages;
 	private final int MAX_CONNECTIONS = 20;
 	private ServerSocket serverSocket;
 	private boolean acceptConnections = false;
+	private ExecutorService pool;
 	
 	public Server()
 	{
-		observers = Collections.synchronizedList(new LinkedList<Observer>());
-		messages = new LinkedBlockingDeque<String>();
+		observers = Collections.synchronizedMap(new HashMap<String, Observer>());
+		messages = new LinkedBlockingDeque<String>();//Do we need this guy?
+		pool = Executors.newCachedThreadPool();
 	}
 
 	public boolean bind()
@@ -22,9 +25,9 @@ public class Server implements Subject
 		boolean bindingSuccessful = true;
 		try
 		{
-			serverSocket = new ServerSocket(10000);
+			serverSocket = new ServerSocket(50000);
 			acceptConnections = true;
-			System.out.println("Server socket bound to port " + 10000);
+			System.out.println("Server socket bound to port " + serverSocket.getLocalPort());
 		}
 		catch(IOException ioEx)
 		{
@@ -36,7 +39,7 @@ public class Server implements Subject
 	
 	public void start()
 	{
-		new Thread(new ConnectionHandler()).start();
+		pool.execute(new ConnectionHandler());
 	}
 	
 	public void shutdown()
@@ -45,17 +48,18 @@ public class Server implements Subject
 	}
 	
 	@Override
-	public void registerObserver(Observer o)//Does this work? Or de we need an index?
+	public void registerObserver(Observer o)//Does this work? Or do we need an index?
 	{
 		synchronized(observers)
 		{
-			if(observers.contains(o))
+			if(observers.containsKey(o.getName()))
 			{
+				o.update("Name is already in use. Choose a different username");
 				return;//Client is already in list
 			}
-			notifyObservers(String.format("%s has joined the conversation.\n", o.getName()));
-			observers.add(o);
+			observers.put(o.getName(), o);
 			
+			notifyObservers(String.format("%s has joined the conversation.\n", o.getName()));
 		}
 		
 	}
@@ -66,7 +70,7 @@ public class Server implements Subject
 		synchronized(observers)
 		{
 			
-			if(!observers.contains(o))//Does this work? Or do we need an index?
+			if(!observers.containsKey(o.getName()))//Does this work? Or do we need an index?
 			{
 				return;//Client isn't registered, so we can't do anything
 			}
@@ -84,7 +88,7 @@ public class Server implements Subject
 	{
 		synchronized(observers)
 		{
-			for(Observer obs : observers)
+			for(Observer obs : observers.values())
 			{
 				obs.update(o);
 			}
@@ -108,17 +112,73 @@ public class Server implements Subject
 					{
 						
 						Socket connection = serverSocket.accept();
+
+						Observer ob = new ObserverClient(connection);
 						
-						//put connection into an observer
-						//Should we start an observer thread?
+						pool.execute(new ClientConnection(ob));
 					}
 				}
 				catch (IOException e)
 				{
+					//Do something better
 					e.printStackTrace();
 				}
 			}
 			System.out.println("Shutting down connection thread.");
+		}
+		
+	}
+	
+	private class ClientConnection implements Runnable
+	{
+		ObserverClient oc;
+		
+		public ClientConnection(Observer o)
+		{
+			oc = (ObserverClient)o;
+		}
+
+		@Override
+		public void run() 
+		{
+			try
+			{
+				String output =  oc.read();
+				
+				if(output.matches("^/(.+)?:(.+)"))//matches PM format
+				{
+					String[] parts = output.split(":", 2);
+					String name = parts[0].substring(1);
+					String message = parts[1];
+					
+					synchronized(observers)
+					{
+						if(observers.containsKey(name))
+						{
+							
+							observers.get(name).update(String.format("%s(Private): %s\\n", oc.getName(), message));
+						}
+						else
+						{
+							oc.update(String.format("(ERROR)Could not find user with name %s\\n", name));
+						}
+					}
+				}
+				else
+				{
+					notifyObservers(String.format("%s: %s\\n", oc.getName(), output));
+				}
+				
+			}
+			catch(IOException ioEx)
+			{
+				synchronized(observers)
+				{
+					removeObserver(oc);
+					
+					notifyObservers(String.format("%s has diconnected.\\n", oc.getName()));
+				}
+			}
 		}
 		
 	}
