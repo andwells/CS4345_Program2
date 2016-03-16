@@ -113,7 +113,10 @@ public class Server implements Subject
 						
 						Socket connection = serverSocket.accept();
 
+						
 						Observer ob = new ObserverClient(connection);
+						registerObserver(ob);
+						
 						
 						pool.execute(new ClientConnection(ob));
 					}
