@@ -54,6 +54,7 @@ public class Server implements Subject
 		{
 			if(observers.containsKey(o.getName()))
 			{
+				//Update format to include message tags (IE: error, PM, regular message)
 				o.update("Name is already in use. Choose a different username");
 				return;//Client is already in list
 			}
@@ -112,7 +113,7 @@ public class Server implements Subject
 					{
 						
 						Socket connection = serverSocket.accept();
-
+						System.out.printf("Client connected from %s\n", connection.getInetAddress().toString());
 						
 						Observer ob = new ObserverClient(connection);
 						registerObserver(ob);
@@ -123,7 +124,7 @@ public class Server implements Subject
 				}
 				catch (IOException e)
 				{
-					//Do something better
+					//Do something better; May need to encapsulate loop in try-catch
 					e.printStackTrace();
 				}
 			}
@@ -149,6 +150,7 @@ public class Server implements Subject
 				String output =  oc.read();
 				
 				if(output.matches("^/(.+)?:(.+)"))//matches PM format
+					//We need a format to specify which 
 				{
 					String[] parts = output.split(":", 2);
 					String name = parts[0].substring(1);
@@ -158,8 +160,9 @@ public class Server implements Subject
 					{
 						if(observers.containsKey(name))
 						{
-							
-							observers.get(name).update(String.format("%s(Private): %s\\n", oc.getName(), message));
+							String pm = String.format("%s(Private): %s\\n", oc.getName(), message);
+							observers.get(name).update(pm);
+							oc.update(pm);
 						}
 						else
 						{
