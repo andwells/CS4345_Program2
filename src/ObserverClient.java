@@ -19,10 +19,11 @@ public class ObserverClient implements Observer
 			
 			//Username should be first thing that is sent to server
 			name = fromClient.readUTF();
+			System.out.printf("Received user name %s.\n", name);
 		}
 		catch(IOException ioEx)
 		{
-			System.out.println("Error establishing connection: " + ioEx.getMessage());
+			System.out.println("(ObserverClient) Error establishing connection: " + ioEx.getMessage());
 		}
 	}
 

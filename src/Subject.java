@@ -13,10 +13,8 @@ public interface Subject
 	//Adds observer passed in to list of observing clients
 	void registerObserver(Observer o);
 	
-	
 	//Removes observer passed in
 	void removeObserver(Observer o);
-	
 	
 	//Performs push update
 	void notifyObservers(Object o);

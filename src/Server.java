@@ -7,7 +7,7 @@ import java.util.concurrent.*;
 public class Server implements Subject
 {
 	private Map<String, Observer> observers;
-	private LinkedBlockingDeque<String> messages;
+	//private LinkedBlockingDeque<String> messages;
 	private final int MAX_CONNECTIONS = 20;
 	private ServerSocket serverSocket;
 	private boolean acceptConnections = false;
@@ -16,7 +16,7 @@ public class Server implements Subject
 	public Server()
 	{
 		observers = Collections.synchronizedMap(new HashMap<String, Observer>());
-		messages = new LinkedBlockingDeque<String>();//Do we need this guy?
+		//messages = new LinkedBlockingDeque<String>();//Do we need this guy?
 		pool = Executors.newCachedThreadPool();
 	}
 
@@ -60,11 +60,11 @@ public class Server implements Subject
 			}
 			observers.put(o.getName(), o);
 			
-			notifyObservers(String.format("%s has joined the conversation.\n", o.getName()));
+			notifyObservers(String.format("%s has joined the conversation.", o.getName()));
 		}
-		
 	}
 
+	
 	@Override
 	public void removeObserver(Observer o)
 	{
@@ -79,7 +79,7 @@ public class Server implements Subject
 			{
 				observers.remove(o);
 				
-				notifyObservers(String.format("%s has disconnected.\n", o.getName()));
+				notifyObservers(String.format("%s has disconnected.", o.getName()));
 			}
 		}
 	}
@@ -100,7 +100,6 @@ public class Server implements Subject
 	
 	private class ConnectionHandler implements Runnable
 	{
-
 		@Override
 		public void run()
 		{
@@ -118,7 +117,6 @@ public class Server implements Subject
 						Observer ob = new ObserverClient(connection);
 						registerObserver(ob);
 						
-						
 						pool.execute(new ClientConnection(ob));
 					}
 				}
@@ -130,7 +128,6 @@ public class Server implements Subject
 			}
 			System.out.println("Shutting down connection thread.");
 		}
-		
 	}
 	
 	private class ClientConnection implements Runnable
@@ -147,32 +144,35 @@ public class Server implements Subject
 		{
 			try
 			{
-				String output =  oc.read();
-				
-				if(output.matches("^/(.+)?:(.+)"))//matches PM format
-					//We need a format to specify which 
+				while(true)
 				{
-					String[] parts = output.split(":", 2);
-					String name = parts[0].substring(1);
-					String message = parts[1];
+					String output =  oc.read();
 					
-					synchronized(observers)
+					if(output.matches("^/(.+)?:(.+)"))//matches PM format
+						//We need a format to specify a regular message
 					{
-						if(observers.containsKey(name))
+						String[] parts = output.split(":", 2);
+						String name = parts[0].substring(1);
+						String message = parts[1];
+						
+						synchronized(observers)
 						{
-							String pm = String.format("%s(Private): %s\\n", oc.getName(), message);
-							observers.get(name).update(pm);
-							oc.update(pm);
-						}
-						else
-						{
-							oc.update(String.format("(ERROR)Could not find user with name %s\\n", name));
+							if(observers.containsKey(name))
+							{
+								String pm = String.format("%s(Private): %s", oc.getName(), message);
+								observers.get(name).update(pm);
+								oc.update(pm);
+							}
+							else
+							{
+								oc.update(String.format("(ERROR)Could not find user with name %s.", name));
+							}
 						}
 					}
-				}
-				else
-				{
-					notifyObservers(String.format("%s: %s\\n", oc.getName(), output));
+					else
+					{
+						notifyObservers(String.format("%s: %s", oc.getName(), output));
+					}
 				}
 				
 			}
@@ -182,7 +182,7 @@ public class Server implements Subject
 				{
 					removeObserver(oc);
 					
-					notifyObservers(String.format("%s has diconnected.\\n", oc.getName()));
+					notifyObservers(String.format("%s has diconnected.", oc.getName()));
 				}
 			}
 		}
