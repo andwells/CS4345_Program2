@@ -78,7 +78,7 @@ public class Server implements Subject
 			else
 			{
 				observers.remove(o);
-				
+				System.out.printf("User %s has disconnected from server.\n", o.getName());
 				notifyObservers(String.format("%s has disconnected.", o.getName()));
 			}
 		}
@@ -181,8 +181,6 @@ public class Server implements Subject
 				synchronized(observers)
 				{
 					removeObserver(oc);
-					
-					notifyObservers(String.format("%s has diconnected.", oc.getName()));
 				}
 			}
 		}
