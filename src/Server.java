@@ -6,17 +6,16 @@ import java.util.concurrent.*;
 
 public class Server implements Subject
 {
-	private Map<String, Observer> observers;
-	//private LinkedBlockingDeque<String> messages;
-	private final int MAX_CONNECTIONS = 20;
-	private ServerSocket serverSocket;
-	private boolean acceptConnections = false;
-	private ExecutorService pool;
+	private Map<String, Observer> observers;			//Maps usernames to connections
+	private final int MAX_CONNECTIONS = 20;				//Only allow 20 users at a time
+	private ServerSocket serverSocket;					//For accepting
+	private boolean acceptConnections = false;			
+	private ExecutorService pool;						//For recycling threads
+	private StringBuilder sList;						//For updating clients of connected users
 	
 	public Server()
 	{
 		observers = Collections.synchronizedMap(new HashMap<String, Observer>());
-		//messages = new LinkedBlockingDeque<String>();//Do we need this guy?
 		pool = Executors.newCachedThreadPool();
 	}
 
@@ -48,7 +47,7 @@ public class Server implements Subject
 	}
 	
 	@Override
-	public void registerObserver(Observer o)//Does this work? Or do we need an index?
+	public boolean registerObserver(Observer o)//Does this work? Or do we need an index?
 	{
 		synchronized(observers)
 		{
@@ -56,11 +55,20 @@ public class Server implements Subject
 			{
 				//Update format to include message tags (IE: error, PM, regular message)
 				o.update("Name is already in use. Choose a different username");
-				return;//Client is already in list
+				return false;//Client is already in list
 			}
 			observers.put(o.getName(), o);
 			
 			notifyObservers(String.format("%s has joined the conversation.", o.getName()));
+			
+			//Get list of registered users to send to client 
+			String userList = buildUserList(observers.keySet());
+			
+			System.out.println("Sending user list after connection.");
+			
+			//Publish registered users to client
+			notifyObservers(userList);
+			return true;
 		}
 	}
 
@@ -77,9 +85,16 @@ public class Server implements Subject
 			}
 			else
 			{
-				observers.remove(o);
+				observers.remove(o.getName());
 				System.out.printf("User %s has disconnected from server.\n", o.getName());
+				
 				notifyObservers(String.format("%s has disconnected.", o.getName()));
+				
+				String userList = buildUserList(observers.keySet());
+				System.out.println("Sending user list after disconnect.");
+				
+				//Publish registered users to client
+				notifyObservers(userList);
 			}
 		}
 	}
@@ -94,7 +109,39 @@ public class Server implements Subject
 				obs.update(o);
 			}
 		}
+	}
+	
+	
+	/**
+	 *buildUserList
+	 *@param users a set containing all usernames
+	 *@param calling the name of the user that connected/disconnected
+	 *@return a string containing all registered users in the format "/list:<username>;<username>.../list"
+	 **/
+	private String buildUserList(Set<String> users)
+	{
+		//Lazy initialization
+		sList = new StringBuilder();
+		sList.append("/list:");//Append 
 		
+		//For iterating through set
+		Iterator<String> it = users.iterator();
+		
+		while(it.hasNext())
+		{
+			String username = it.next();//Consumes the next item
+
+			sList.append(username);
+			if(it.hasNext())//If there are more items, add a semicolon to separate between usernames
+			{
+				sList.append(";");
+			}
+			
+		}
+		sList.append("/list");
+		
+		
+		return sList.toString();
 	}
 	
 	
@@ -115,9 +162,13 @@ public class Server implements Subject
 						System.out.printf("Client connected from %s\n", connection.getInetAddress().toString());
 						
 						Observer ob = new ObserverClient(connection);
-						registerObserver(ob);
+						boolean registrationSuccess =  registerObserver(ob);
 						
-						pool.execute(new ClientConnection(ob));
+						if(registrationSuccess)
+						{
+							pool.execute(new ClientConnection(ob));
+						}
+						
 					}
 				}
 				catch (IOException e)
@@ -148,11 +199,11 @@ public class Server implements Subject
 				{
 					String output =  oc.read();
 					
-					if(output.matches("^/(.+)?:(.+)"))//matches PM format
+					if(output.matches("^(\\w)*/(.+)?(\\w)*:(.+)$"))//matches PM format
 						//We need a format to specify a regular message
 					{
 						String[] parts = output.split(":", 2);
-						String name = parts[0].substring(1);
+						String name = parts[0].substring(1).trim();
 						String message = parts[1];
 						
 						synchronized(observers)

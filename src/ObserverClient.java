@@ -18,7 +18,9 @@ public class ObserverClient implements Observer
 			fromClient = new DataInputStream(s.getInputStream());
 			
 			//Username should be first thing that is sent to server
-			name = fromClient.readUTF();
+			name = fromClient.readUTF().trim();
+			
+			
 			System.out.printf("Received user name %s.\n", name);
 		}
 		catch(IOException ioEx)
