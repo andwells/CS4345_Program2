@@ -2,7 +2,7 @@
 
 
 import java.util.Scanner;
-public class Driver
+public class RunServer
 {
 	public static void main(String[] args)
 	{

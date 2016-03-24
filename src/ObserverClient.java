@@ -1,3 +1,15 @@
+/** 
+ * Author: Max Carter, Robert Walker, Andrew Wells
+ * Course Number: CS4345
+ * Semester: Spring 2016
+ * Assignment: Program2
+ * File: ObserverClient.java
+ * Date: 3/23/2016
+ * 
+ * Details: Encapsulates on the server-side a connection between the client and server  
+ * */
+
+
 import java.io.*;
 import java.net.*;
 
@@ -36,9 +48,9 @@ public class ObserverClient implements Observer
 		{
 			toClient.writeUTF((String) o);
 		}
-		catch(IOException ioEX)
+		catch(IOException ioEx)
 		{
-			//do something
+			System.out.printf("IO Error from ObserverClient %s: %s\n", name, ioEx.getMessage());
 		}
 	}
 

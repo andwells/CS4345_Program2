@@ -1,3 +1,14 @@
+/**
+ * Author: Max Carter, Robert Walker, Andrew Wells
+ * Course Number: CS4345
+ * Semester: Spring 2016
+ * Assignment: Program2
+ * File: Server.java
+ * Date: 3/23/2016
+ * 
+ * Details: The server for relaying chat messages
+ * */
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -19,6 +30,8 @@ public class Server implements Subject
 		pool = Executors.newCachedThreadPool();
 	}
 
+	
+	//Performs connection logic
 	public boolean bind()
 	{
 		boolean bindingSuccessful = true;
@@ -46,8 +59,10 @@ public class Server implements Subject
 		this.acceptConnections = false;
 	}
 	
+	
+	//Add user to list
 	@Override
-	public boolean registerObserver(Observer o)//Does this work? Or do we need an index?
+	public boolean registerObserver(Observer o)
 	{
 		synchronized(observers)
 		{
@@ -72,14 +87,14 @@ public class Server implements Subject
 		}
 	}
 
-	
+	//Remove a connected user 
 	@Override
 	public void removeObserver(Observer o)
 	{
 		synchronized(observers)
 		{
 			
-			if(!observers.containsKey(o.getName()))//Does this work? Or do we need an index?
+			if(!observers.containsKey(o.getName()))
 			{
 				return;//Client isn't registered, so we can't do anything
 			}
@@ -99,6 +114,8 @@ public class Server implements Subject
 		}
 	}
 
+	
+	//Update all registered users
 	@Override
 	public void notifyObservers(Object o)
 	{
@@ -200,7 +217,6 @@ public class Server implements Subject
 					String output =  oc.read();
 					
 					if(output.matches("^(\\w)*/(.+)?(\\w)*:(.+)$"))//matches PM format
-						//We need a format to specify a regular message
 					{
 						String[] parts = output.split(":", 2);
 						String name = parts[0].substring(1).trim();
@@ -210,7 +226,8 @@ public class Server implements Subject
 						{
 							if(observers.containsKey(name))
 							{
-								String pm = String.format("%s(Private): %s", oc.getName(), message);
+								//Display PM with this format: sender->receiver:message
+								String pm = String.format("%s->%s: %s", oc.getName(), name, message);
 								observers.get(name).update(pm);
 								oc.update(pm);
 							}
@@ -227,7 +244,7 @@ public class Server implements Subject
 				}
 				
 			}
-			catch(IOException ioEx)
+			catch(IOException ioEx)//If connection handler has IO error, assume they disconnected 
 			{
 				synchronized(observers)
 				{
@@ -235,6 +252,5 @@ public class Server implements Subject
 				}
 			}
 		}
-		
 	}
 }
